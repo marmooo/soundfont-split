@@ -47,12 +47,12 @@ const one = extractPreset(sf, 0);
 deno run -A cli.ts input.sf2 out_dir [quality] [concurrency]
 ```
 
-| Arg           | Description                                                                |
-| ------------- | -------------------------------------------------------------------------- |
-| `input`       | Path to `.sf2` or `.sf3`                                                   |
-| `out_dir`     | Output directory                                                           |
-| `quality`     | Vorbis VBR quality (\[-1, 10\], default `4`)                               |
-| `concurrency` | How many samples to encode in parallel (default: hardware concurrency / 4) |
+| Arg           | Description                                                                 |
+| ------------- | --------------------------------------------------------------------------- |
+| `input`       | Path to `.sf2` or `.sf3`                                                    |
+| `out_dir`     | Output directory                                                            |
+| `quality`     | Vorbis VBR quality (\[-1, 10\], default `4`)                                |
+| `concurrency` | How many samples to encode in parallel (default: hardware concurrency or 4) |
 
 Options match `@marmooo/sf2-to-sf3` (`quality` / `concurrency`).
 
