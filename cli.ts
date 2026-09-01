@@ -1,19 +1,17 @@
-#!/usr/bin/env -S deno run -A
-
 import { splitSoundFont } from "./src/mod.ts";
 
-const [inputPath, outDir, bitsPerHzArg, concurrencyArg] = Deno.args;
+const [inputPath, outDir, qualityArg, concurrencyArg] = Deno.args;
 
 if (!inputPath || !outDir) {
   console.error(
-    "usage: soundfont-split <input.sf2|sf3> <out_dir> [bitsPerHz] [concurrency]",
+    "usage: soundfont-split <input.sf2|sf3> <out_dir> [quality] [concurrency]",
   );
   console.error("");
   console.error(
     "Splits each preset into out_dir/{bank:03d}/{preset:03d}.sf3",
   );
   console.error(
-    "  bitsPerHz    — Vorbis quality (bitrate ≈ sampleRate * bitsPerHz), default 4",
+    "  quality      — Vorbis VBR quality (−1..10), default 4",
   );
   console.error(
     "  concurrency  — max parallel sample encodes (global across presets).",
@@ -23,7 +21,7 @@ if (!inputPath || !outDir) {
 }
 
 const results = await splitSoundFont(inputPath, outDir, {
-  bitsPerHz: bitsPerHzArg ? Number(bitsPerHzArg) : undefined,
+  quality: qualityArg ? Number(qualityArg) : undefined,
   concurrency: concurrencyArg ? Number(concurrencyArg) : undefined,
 });
 

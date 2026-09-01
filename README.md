@@ -18,15 +18,17 @@ standalone SF3.
 ## CLI
 
 ```bash
-deno run -A cli.ts input.sf2 out_dir [bitsPerHz] [concurrency]
+deno run -A cli.ts input.sf2 out_dir [quality] [concurrency]
 ```
 
 | Arg           | Description                                                                |
 | ------------- | -------------------------------------------------------------------------- |
 | `input`       | Path to `.sf2` or `.sf3`                                                   |
 | `out_dir`     | Output directory                                                           |
-| `bitsPerHz`   | Vorbis quality: bitrate ≈ `sampleRate * bitsPerHz` (default `4`)           |
+| `quality`     | Vorbis VBR quality (−1..10, default `4`)                                   |
 | `concurrency` | How many samples to encode in parallel (default: hardware concurrency / 4) |
+
+Options match `@marmooo/sf2-to-sf3` (`quality` / `concurrency`).
 
 ## Installation
 
@@ -48,7 +50,7 @@ npm install @marmooo/soundfont-split -g
 import { parse } from "@marmooo/soundfont";
 import { extractPreset, splitSoundFont } from "@marmooo/soundfont-split";
 
-await splitSoundFont("input.sf2", "out_dir", { bitsPerHz: 4, concurrency: 4 });
+await splitSoundFont("input.sf2", "out_dir", { quality: 4, concurrency: 4 });
 
 const sf = parse(Deno.readFileSync("input.sf2"));
 const one = extractPreset(sf, 0);

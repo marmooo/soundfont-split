@@ -15,12 +15,11 @@ import {
 import { createDefaultEncoder, sf2ToSf3 } from "@marmooo/sf2-to-sf3";
 
 export interface SplitOptions {
-  /** Vorbis quality: bitrate ≈ sampleRate * bitsPerHz. Default 4. */
-  bitsPerHz?: number;
+  /** Vorbis VBR quality (−1..10). Default 4. */
+  quality?: number;
   /**
    * Max concurrent sample encodes across the whole run (default:
-   * navigator.hardwareConcurrency or 4). Presets are processed in parallel
-   * and share this budget via a pooled encoder.
+   * navigator.hardwareConcurrency or 4). Also sizes the encoder worker pool.
    */
   concurrency?: number;
   /**
@@ -37,6 +36,8 @@ export interface SplitResult {
   path: string;
   byteLength: number;
 }
+
+type DisposableEncoder = SF3Encoder & { dispose?: () => void };
 
 function cloneGenerator(g: GeneratorList): GeneratorList {
   if (g.value instanceof RangeValue) {
@@ -69,41 +70,6 @@ function defaultConcurrency(): number {
   return typeof navigator !== "undefined" && navigator.hardwareConcurrency
     ? navigator.hardwareConcurrency
     : 4;
-}
-
-/** Limit concurrent calls into `encode` to `limit` (global across presets). */
-function poolEncoder(encode: SF3Encoder, limit: number): SF3Encoder {
-  let active = 0;
-  const waiters: Array<() => void> = [];
-
-  const acquire = () =>
-    new Promise<void>((resolve) => {
-      if (active < limit) {
-        active++;
-        resolve();
-      } else {
-        waiters.push(resolve);
-      }
-    });
-
-  const release = () => {
-    const next = waiters.shift();
-    if (next) {
-      // transfer the slot to the next waiter
-      next();
-    } else {
-      active--;
-    }
-  };
-
-  return async (pcm, sampleRate) => {
-    await acquire();
-    try {
-      return await encode(pcm, sampleRate);
-    } finally {
-      release();
-    }
-  };
 }
 
 /**
@@ -281,10 +247,9 @@ export function extractPreset(
   for (const oldId of sampleIds) {
     const sh = soundFont.sampleHeaders[oldId];
     const sample = soundFont.samples[oldId];
-    const newLink =
-      sh.sampleLink !== 0 && sampleMap.has(sh.sampleLink)
-        ? sampleMap.get(sh.sampleLink)!
-        : 0;
+    const newLink = sh.sampleLink !== 0 && sampleMap.has(sh.sampleLink)
+      ? sampleMap.get(sh.sampleLink)!
+      : 0;
     sampleHeaders.push(
       new SampleHeader(
         sh.sampleName,
@@ -334,16 +299,14 @@ export function extractPreset(
  *
  * Presets are processed in parallel. Sample encodes share a single encoder
  * pool sized by `options.concurrency` (so the budget is global, not
- * per-preset). Warm-up runs once for the whole job.
+ * per-preset).
  */
 export async function splitSoundFont(
   input: Uint8Array | string,
   outDir: string,
   options: SplitOptions = {},
 ): Promise<SplitResult[]> {
-  const bytes = typeof input === "string"
-    ? Deno.readFileSync(input)
-    : input;
+  const bytes = typeof input === "string" ? Deno.readFileSync(input) : input;
   const soundFont = parse(bytes);
   const toSf3 = options.toSf3 !== false;
   const concurrency = Math.max(
@@ -353,68 +316,76 @@ export async function splitSoundFont(
 
   await Deno.mkdir(outDir, { recursive: true });
 
-  // Shared encoder: one warm-up, global concurrency across all presets.
-  // Passing `encode` into sf2ToSf3 skips its per-call throwaway encode.
-  let encode: SF3Encoder | undefined;
+  // Shared encoder pool for the whole job. Callers that supply their own
+  // encode via sf2ToSf3 are not used here — we own the pool so we can dispose
+  // it and let the process exit (workers otherwise keep the event loop alive).
+  let encode: DisposableEncoder | undefined;
   if (toSf3) {
-    const base = createDefaultEncoder({ bitsPerHz: options.bitsPerHz });
-    encode = poolEncoder(base, concurrency);
-    await encode(new Int16Array(1), 44100);
+    encode = createDefaultEncoder({
+      quality: options.quality,
+      poolSize: concurrency,
+    });
   }
 
-  const headers = soundFont.presetHeaders;
-  const jobs: Array<{ index: number; ph: PresetHeader }> = [];
-  for (let i = 0; i < headers.length; i++) {
-    if (!headers[i].isEnd) jobs.push({ index: i, ph: headers[i] });
-  }
-
-  // Cap how many presets we assemble at once (encode pool is the real
-  // limiter; this just bounds peak memory from parallel write()s).
-  const presetParallel = concurrency;
-  const results: SplitResult[] = new Array(jobs.length);
-
-  let nextJob = 0;
-  async function worker() {
-    while (true) {
-      const jobIndex = nextJob++;
-      if (jobIndex >= jobs.length) return;
-      const { index, ph } = jobs[jobIndex];
-
-      const extracted = extractPreset(soundFont, index);
-      const bankDir = `${outDir}/${String(ph.bank).padStart(3, "0")}`;
-      await Deno.mkdir(bankDir, { recursive: true });
-      const ext = toSf3 ? "sf3" : "sf2";
-      const fileName = `${String(ph.preset).padStart(3, "0")}.${ext}`;
-      const path = `${bankDir}/${fileName}`;
-
-      const outBytes = toSf3
-        ? await sf2ToSf3(extracted, {
-          // write() may schedule many encodes; the pool caps actual work.
-          encode: encode!,
-          concurrency,
-        })
-        : await write(extracted);
-
-      Deno.writeFileSync(path, outBytes);
-      const presetName = ph.presetName.replace(/\0+$/, "").trim();
-      results[jobIndex] = {
-        bank: ph.bank,
-        preset: ph.preset,
-        presetName,
-        path,
-        byteLength: outBytes.byteLength,
-      };
-      console.log(
-        `wrote ${path} (${outBytes.byteLength} bytes) — ${presetName}`,
-      );
+  try {
+    const headers = soundFont.presetHeaders;
+    const jobs: Array<{ index: number; ph: PresetHeader }> = [];
+    for (let i = 0; i < headers.length; i++) {
+      if (!headers[i].isEnd) jobs.push({ index: i, ph: headers[i] });
     }
+
+    // Cap how many presets we assemble at once (encode pool is the real
+    // limiter; this just bounds peak memory from parallel write()s).
+    const presetParallel = concurrency;
+    const results: SplitResult[] = new Array(jobs.length);
+
+    let nextJob = 0;
+    const runWorker = async () => {
+      while (true) {
+        const jobIndex = nextJob++;
+        if (jobIndex >= jobs.length) return;
+        const { index, ph } = jobs[jobIndex];
+
+        const extracted = extractPreset(soundFont, index);
+        const bankDir = `${outDir}/${String(ph.bank).padStart(3, "0")}`;
+        await Deno.mkdir(bankDir, { recursive: true });
+        const ext = toSf3 ? "sf3" : "sf2";
+        const fileName = `${String(ph.preset).padStart(3, "0")}.${ext}`;
+        const path = `${bankDir}/${fileName}`;
+
+        const outBytes = toSf3
+          ? await sf2ToSf3(extracted, {
+            // write() may schedule many encodes; the pool caps actual work.
+            // Passing encode skips createDefaultEncoder inside sf2ToSf3, so
+            // it will not dispose our shared pool.
+            encode: encode!,
+            concurrency,
+          })
+          : await write(extracted);
+
+        Deno.writeFileSync(path, outBytes);
+        const presetName = ph.presetName.replace(/\0+$/, "").trim();
+        results[jobIndex] = {
+          bank: ph.bank,
+          preset: ph.preset,
+          presetName,
+          path,
+          byteLength: outBytes.byteLength,
+        };
+        console.log(
+          `wrote ${path} (${outBytes.byteLength} bytes) — ${presetName}`,
+        );
+      }
+    };
+
+    const workers = Array.from(
+      { length: Math.min(presetParallel, jobs.length) },
+      () => runWorker(),
+    );
+    await Promise.all(workers);
+
+    return results;
+  } finally {
+    encode?.dispose?.();
   }
-
-  const workers = Array.from(
-    { length: Math.min(presetParallel, jobs.length) },
-    () => worker(),
-  );
-  await Promise.all(workers);
-
-  return results;
 }
