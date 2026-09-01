@@ -15,7 +15,7 @@ if (!inputPath || !outDir) {
   );
   console.error(
     "  concurrency  - max parallel sample encodes (global across presets).",
-    "                 default: hardwareConcurrency or 4",
+    "                  default: hardwareConcurrency or 4",
   );
   Deno.exit(1);
 }
