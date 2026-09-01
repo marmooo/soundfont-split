@@ -1,0 +1,12 @@
+{
+  "name": "@marmooo/soundfont-split",
+  "version": "0.0.0",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./cli": "./cli.ts"
+  },
+  "imports": {
+    "@marmooo/soundfont": "npm:@marmooo/soundfont@^0.3.1",
+    "@marmooo/sf2-to-sf3": "npm:@marmooo/sf2-to-sf3@^0.0.3"
+  }
+}
