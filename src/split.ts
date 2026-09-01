@@ -67,9 +67,10 @@ function isTerminalMod(m: ModulatorList): boolean {
 }
 
 function defaultConcurrency(): number {
-  return typeof navigator !== "undefined" && navigator.hardwareConcurrency
-    ? navigator.hardwareConcurrency
-    : 4;
+  const nav = (globalThis as {
+    navigator?: { hardwareConcurrency?: number };
+  }).navigator;
+  return nav?.hardwareConcurrency ?? 4;
 }
 
 /**
