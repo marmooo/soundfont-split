@@ -15,21 +15,6 @@ Each file contains only the instruments and samples required by that preset
 (including stereo-linked samples). Indices are remapped so the result is a valid
 standalone SF3.
 
-## CLI
-
-```bash
-deno run -A cli.ts input.sf2 out_dir [quality] [concurrency]
-```
-
-| Arg           | Description                                                                |
-| ------------- | -------------------------------------------------------------------------- |
-| `input`       | Path to `.sf2` or `.sf3`                                                   |
-| `out_dir`     | Output directory                                                           |
-| `quality`     | Vorbis VBR quality (−1..10, default `4`)                                   |
-| `concurrency` | How many samples to encode in parallel (default: hardware concurrency / 4) |
-
-Options match `@marmooo/sf2-to-sf3` (`quality` / `concurrency`).
-
 ## Installation
 
 ### Deno
@@ -44,7 +29,7 @@ deno install -fr -RW -g npm:@marmooo/soundfont-split --name soundfont-split
 npm install @marmooo/soundfont-split -g
 ```
 
-## As a function
+## Usage
 
 ```ts
 import { parse } from "@marmooo/soundfont";
@@ -55,6 +40,21 @@ await splitSoundFont("input.sf2", "out_dir", { quality: 4, concurrency: 4 });
 const sf = parse(Deno.readFileSync("input.sf2"));
 const one = extractPreset(sf, 0);
 ```
+
+## CLI
+
+```bash
+deno run -A cli.ts input.sf2 out_dir [quality] [concurrency]
+```
+
+| Arg           | Description                                                                |
+| ------------- | -------------------------------------------------------------------------- |
+| `input`       | Path to `.sf2` or `.sf3`                                                   |
+| `out_dir`     | Output directory                                                           |
+| `quality`     | Vorbis VBR quality (\[-1, 10\], default `4`)                               |
+| `concurrency` | How many samples to encode in parallel (default: hardware concurrency / 4) |
+
+Options match `@marmooo/sf2-to-sf3` (`quality` / `concurrency`).
 
 ## License
 

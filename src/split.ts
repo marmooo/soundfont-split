@@ -15,17 +15,13 @@ import {
 import { createDefaultEncoder, sf2ToSf3 } from "@marmooo/sf2-to-sf3";
 
 export interface SplitOptions {
-  /** Vorbis VBR quality (−1..10). Default 4. */
+  // Vorbis VBR quality [-1, 10]. Default 4.
   quality?: number;
-  /**
-   * Max concurrent sample encodes across the whole run (default:
-   * navigator.hardwareConcurrency or 4). Also sizes the encoder worker pool.
-   */
+  // Max concurrent sample encodes across the whole run (default:
+  // navigator.hardwareConcurrency or 4). Also sizes the encoder worker pool.
   concurrency?: number;
-  /**
-   * If true (default), compress each preset to SF3 via @marmooo/sf2-to-sf3.
-   * If false, write SF2 (PCM) without encoding.
-   */
+  // If true (default), compress each preset to SF3 via @marmooo/sf2-to-sf3.
+  // If false, write SF2 (PCM) without encoding.
   toSf3?: boolean;
 }
 
@@ -73,12 +69,10 @@ function defaultConcurrency(): number {
   return nav?.hardwareConcurrency ?? 4;
 }
 
-/**
- * Extract a single preset (by index into soundFont.presetHeaders) into a
- * minimal SoundFont that contains only the instruments and samples that
- * preset depends on. Indices are remapped so the result is a valid
- * standalone SF2/SF3.
- */
+// Extract a single preset (by index into soundFont.presetHeaders) into a
+// minimal SoundFont that contains only the instruments and samples that
+// preset depends on. Indices are remapped so the result is a valid
+// standalone SF2/SF3.
 export function extractPreset(
   soundFont: SoundFont,
   presetHeaderIndex: number,
@@ -294,14 +288,12 @@ export function extractPreset(
   });
 }
 
-/**
- * Split every preset in the soundfont into its own file under outDir:
- *   outDir/{bank:03d}/{preset:03d}.sf3
- *
- * Presets are processed in parallel. Sample encodes share a single encoder
- * pool sized by `options.concurrency` (so the budget is global, not
- * per-preset).
- */
+// Split every preset in the soundfont into its own file under outDir:
+//   outDir/{bank:03d}/{preset:03d}.sf3
+//
+// Presets are processed in parallel. Sample encodes share a single encoder
+// pool sized by `options.concurrency` (so the budget is global, not
+// per-preset).
 export async function splitSoundFont(
   input: Uint8Array | string,
   outDir: string,
@@ -318,7 +310,7 @@ export async function splitSoundFont(
   await Deno.mkdir(outDir, { recursive: true });
 
   // Shared encoder pool for the whole job. Callers that supply their own
-  // encode via sf2ToSf3 are not used here — we own the pool so we can dispose
+  // encode via sf2ToSf3 are not used here - we own the pool so we can dispose
   // it and let the process exit (workers otherwise keep the event loop alive).
   let encode: DisposableEncoder | undefined;
   if (toSf3) {
@@ -374,7 +366,7 @@ export async function splitSoundFont(
           byteLength: outBytes.byteLength,
         };
         console.log(
-          `wrote ${path} (${outBytes.byteLength} bytes) — ${presetName}`,
+          `wrote ${path} (${outBytes.byteLength} bytes) - ${presetName}`,
         );
       }
     };

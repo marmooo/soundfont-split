@@ -11,10 +11,10 @@ if (!inputPath || !outDir) {
     "Splits each preset into out_dir/{bank:03d}/{preset:03d}.sf3",
   );
   console.error(
-    "  quality      — Vorbis VBR quality (−1..10), default 4",
+    "  quality      - Vorbis VBR quality ([-1, 10], default 4",
   );
   console.error(
-    "  concurrency  — max parallel sample encodes (global across presets).",
+    "  concurrency  - max parallel sample encodes (global across presets).",
     "                 default: hardwareConcurrency or 4",
   );
   Deno.exit(1);
