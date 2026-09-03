@@ -4,10 +4,10 @@ Split a SoundFont (SF2 / SF3) into per-preset SF3 files.
 
 ```
 out_dir/
-  000/000.sf3   # bank 0, program 0
+  000/000.sf3  # bank 0, program 0
   000/001.sf3
   ...
-  128/000.sf3   # percussion (bank 128)
+  128/000.sf3  # percussion (bank 128)
   ...
 ```
 
