@@ -43,18 +43,25 @@ const one = extractPreset(sf, 0);
 
 ## CLI
 
-```bash
-deno run -A cli.ts input.sf2 out_dir [quality] [concurrency]
 ```
+Usage: soundfont-split <input.sf2|sf3> <out_dir> [options]
 
-| Arg           | Description                                                                 |
-| ------------- | --------------------------------------------------------------------------- |
-| `input`       | Path to `.sf2` or `.sf3`                                                    |
-| `out_dir`     | Output directory                                                            |
-| `quality`     | Vorbis VBR quality (\[-1, 10\], default `4`)                                |
-| `concurrency` | How many samples to encode in parallel (default: hardware concurrency or 4) |
+Split a SoundFont (SF2 / SF3) into per-preset SF3 files.
 
-Options match `@marmooo/sf2-to-sf3` (`quality` / `concurrency`).
+out_dir/
+  000/000.sf3  # bank 0, program 0
+  000/001.sf3
+  ...
+  128/000.sf3  # percussion (bank 128)
+  ...
+
+Options:
+  -V, --version      show version
+  -q, --quality      Vorbis VBR quality ([-1, 10], default 4)
+  -c, --concurrency  max parallel sample encodes (global across presets)
+                     default: hardwareConcurrency or 4
+  -h, --help         show this help
+```
 
 ## License
 
