@@ -5,10 +5,11 @@ const VERSION = "0.0.0";
 
 const args = parseArgs(Deno.args, {
   string: ["quality", "concurrency"],
-  boolean: ["version", "help"],
+  boolean: ["version", "help", "recompress"],
   alias: {
     q: "quality",
     c: "concurrency",
+    r: "recompress",
     V: "version",
     h: "help",
   },
@@ -30,6 +31,9 @@ Options:
   -q, --quality      Vorbis VBR quality ([-1, 10], default 4)
   -c, --concurrency  max parallel sample encodes (global across presets)
                        default: hardwareConcurrency or 4
+  -r, --recompress   re-encode already-compressed (SF3) samples at
+                     --quality instead of copying them through as-is
+                       default: false
   -h, --help         display help for command`;
 
 if (args.version) {
@@ -56,6 +60,7 @@ const concurrencyArg = args.concurrency;
 const results = await splitSoundFont(inputPath, outDir, {
   quality: qualityArg ? Number(qualityArg) : undefined,
   concurrency: concurrencyArg ? Number(concurrencyArg) : undefined,
+  recompress: args.recompress,
 });
 
 console.log(`\ndone: ${results.length} preset(s) written under ${outDir}`);
