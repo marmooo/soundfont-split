@@ -8,11 +8,13 @@ import {
   PresetHeader,
   RangeValue,
   SampleHeader,
+  type SF3Decoder,
   type SF3Encoder,
   SoundFont,
   write,
 } from "@marmooo/soundfont";
-import { createDefaultEncoder, sf2ToSf3 } from "@marmooo/sf2-to-sf3";
+import { createDefaultEncoder } from "@marmooo/sf3-codec/encoder";
+import { createDefaultDecoder } from "@marmooo/sf3-codec/decoder";
 
 export interface SplitOptions {
   // Vorbis VBR quality [-1, 10]. Default 4.
@@ -20,9 +22,13 @@ export interface SplitOptions {
   // Max concurrent sample encodes across the whole run (default:
   // navigator.hardwareConcurrency or 4). Also sizes the encoder worker pool.
   concurrency?: number;
-  // If true (default), compress each preset to SF3 via @marmooo/sf2-to-sf3.
-  // If false, write SF2 (PCM) without encoding.
+  // If true (default), compress each preset to SF3 (Vorbis via
+  // @marmooo/sf3-codec). If false, write SF2 (PCM) without encoding.
   toSf3?: boolean;
+  // If true, samples that are already compressed (SF3 input) are decoded
+  // and re-encoded at `quality` too, instead of being copied through as-is.
+  // Costs extra time; off by default. Ignored when `toSf3` is false.
+  recompress?: boolean;
 }
 
 export interface SplitResult {
@@ -34,6 +40,7 @@ export interface SplitResult {
 }
 
 type DisposableEncoder = SF3Encoder & { dispose?: () => void };
+type DisposableDecoder = SF3Decoder & { dispose?: () => void };
 
 function cloneGenerator(g: GeneratorList): GeneratorList {
   if (g.value instanceof RangeValue) {
@@ -313,11 +320,15 @@ export async function splitSoundFont(
   // encode via sf2ToSf3 are not used here - we own the pool so we can dispose
   // it and let the process exit (workers otherwise keep the event loop alive).
   let encode: DisposableEncoder | undefined;
+  let decode: DisposableDecoder | undefined;
   if (toSf3) {
     encode = createDefaultEncoder({
       quality: options.quality,
       poolSize: concurrency,
     });
+    if (options.recompress) {
+      decode = createDefaultDecoder({ poolSize: concurrency });
+    }
   }
 
   try {
@@ -347,11 +358,10 @@ export async function splitSoundFont(
         const path = `${bankDir}/${fileName}`;
 
         const outBytes = toSf3
-          ? await sf2ToSf3(extracted, {
+          ? await write(extracted, {
             // write() may schedule many encodes; the pool caps actual work.
-            // Passing encode skips createDefaultEncoder inside sf2ToSf3, so
-            // it will not dispose our shared pool.
             encode: encode!,
+            decode,
             concurrency,
           })
           : await write(extracted);
@@ -380,5 +390,6 @@ export async function splitSoundFont(
     return results;
   } finally {
     encode?.dispose?.();
+    decode?.dispose?.();
   }
 }
