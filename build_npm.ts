@@ -17,7 +17,7 @@ await build({
   },
   package: {
     name: "@marmooo/soundfont-split",
-    version: "0.0.0",
+    version: "0.0.1",
     description: "Split a SoundFont (SF2 / SF3) into per-preset SF3 files.",
     license: "MIT",
     repository: {

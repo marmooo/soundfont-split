@@ -1,7 +1,7 @@
 import { parseArgs } from "@std/cli";
 import { splitSoundFont } from "./src/mod.ts";
 
-const VERSION = "0.0.0";
+const VERSION = "0.0.1";
 
 const args = parseArgs(Deno.args, {
   string: ["quality", "concurrency"],
