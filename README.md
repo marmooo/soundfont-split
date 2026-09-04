@@ -59,7 +59,7 @@ Options:
   -V, --version      show version
   -q, --quality      Vorbis VBR quality ([-1, 10], default 4)
   -c, --concurrency  max parallel sample encodes (global across presets)
-                     default: hardwareConcurrency or 4
+                       default: hardwareConcurrency or 4
   -r, --recompress   re-encode already-compressed (SF3) samples at
                      --quality instead of copying them through as-is
                        default: false
