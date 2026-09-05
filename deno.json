@@ -7,7 +7,7 @@
   },
   "imports": {
     "@deno/dnt": "jsr:@deno/dnt@^0.43.2",
-    "@marmooo/soundfont": "npm:@marmooo/soundfont@^0.3.2",
+    "@marmooo/soundfont": "npm:@marmooo/soundfont@^0.3.3",
     "@marmooo/sf3-codec": "npm:@marmooo/sf3-codec@^0.0.2",
     "@std/cli": "jsr:@std/cli@^1.0.32"
   }
