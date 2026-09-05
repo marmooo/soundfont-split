@@ -200,9 +200,17 @@ export function extractPreset(
 
       for (const g of gens) {
         if (g.type === "sampleID" && typeof g.value === "number") {
-          sampleIdSet.add(g.value);
           const sh = soundFont.sampleHeaders[g.value];
-          if (sh && sh.sampleLink !== 0 && !sh.isEnd) {
+          // Skip terminal / out-of-range sample IDs (can appear after
+          // empty-name terminal records are stripped by the parser).
+          if (!sh || sh.isEnd) continue;
+          sampleIdSet.add(g.value);
+          const linked = soundFont.sampleHeaders[sh.sampleLink];
+          if (
+            sh.sampleLink !== 0 &&
+            linked &&
+            !linked.isEnd
+          ) {
             sampleIdSet.add(sh.sampleLink);
           }
         }
@@ -230,7 +238,12 @@ export function extractPreset(
     instrumentGenerators.push(GeneratorList.end());
   }
 
-  const sampleIds = [...sampleIdSet].sort((a, b) => a - b);
+  const sampleIds = [...sampleIdSet]
+    .filter((id) => {
+      const sh = soundFont.sampleHeaders[id];
+      return sh !== undefined && !sh.isEnd;
+    })
+    .sort((a, b) => a - b);
   const sampleMap = new Map<number, number>();
   sampleIds.forEach((id, i) => sampleMap.set(id, i));
 
@@ -238,7 +251,9 @@ export function extractPreset(
     if (g.type === "sampleID" && typeof g.value === "number") {
       const mapped = sampleMap.get(g.value);
       if (mapped === undefined) {
-        throw new Error(`sample ${g.value} not collected`);
+        throw new Error(
+          `sample ${g.value} not collected (missing or terminal header)`,
+        );
       }
       g.value = mapped;
     }
@@ -249,6 +264,7 @@ export function extractPreset(
   for (const oldId of sampleIds) {
     const sh = soundFont.sampleHeaders[oldId];
     const sample = soundFont.samples[oldId];
+    if (!sh || !sample || sh.isEnd) continue;
     const newLink = sh.sampleLink !== 0 && sampleMap.has(sh.sampleLink)
       ? sampleMap.get(sh.sampleLink)!
       : 0;
